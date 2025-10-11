@@ -36,6 +36,7 @@
 #define SDA_PIN 27
 #define SCL_PIN 26
 
+//unit price
 #define UNIT_PRICE 3500
 
 #endif

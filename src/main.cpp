@@ -99,13 +99,17 @@ void loop() {
     A1.bill = A1.energy * unit_price;
     A2.bill = A2.energy * unit_price;
 
+    tft.deleteText(20, 140, 2, 6);
     tft.print(A1.energy, 20, 140, 2, ST77XX_WHITE);
     tft.print(" KWh");
+    tft.deleteText(180, 140, 2, 6);
     tft.print(A2.energy, 180, 140, 2, ST77XX_WHITE);
     tft.print(" KWh");
     
+    tft.deleteText(10, 200, 2, 6);
     tft.print(A1.bill, 10, 200, 2, ST77XX_WHITE);
     tft.print(" VND");
+    tft.deleteText(170, 200, 2, 6);
     tft.print(A2.bill, 170, 200, 2, ST77XX_WHITE);
     tft.print(" VND");
     Serial.println();
