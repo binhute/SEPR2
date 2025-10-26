@@ -243,10 +243,11 @@ void loop() {
               pzem1.frequency());
     DEBUG_PRINTLN();
 
-    if (now.hour == 0 && now.minute == 0 && now.second == 0) {
+    if (now.second == 0) {
         if (Firebase.RTDB.setFloat(&fbdo,
             "/" + String(ID1) + 
             "/" + String(now.day) + "-" + String(now.month) + "-" + String(now.year) +
+            "," + String(now.hour) + ":" + String(now.minute) + 
             "/Energy",
             roundf(A1.energy * 100) / 100
         )) {
@@ -257,6 +258,7 @@ void loop() {
         if (Firebase.RTDB.setInt(&fbdo,
             "/" + String(ID1) + 
             "/" + String(now.day) + "-" + String(now.month) + "-" + String(now.year) +
+            "," + String(now.hour) + ":" + String(now.minute) + 
             "/Bill",
             A1.bill
         )) {
@@ -267,6 +269,7 @@ void loop() {
         if (Firebase.RTDB.setFloat(&fbdo,
             "/" + String(ID2) + 
             "/" + String(now.day) + "-" + String(now.month) + "-" + String(now.year) +
+            "," + String(now.hour) + ":" + String(now.minute) + 
             "/Energy",
             roundf(A2.energy * 100) / 100
         )) {
@@ -276,6 +279,7 @@ void loop() {
         if (Firebase.RTDB.setInt(&fbdo,
             "/" + String(ID2) + 
             "/" + String(now.day) + "-" + String(now.month) + "-" + String(now.year) +
+            "," + String(now.hour) + ":" + String(now.minute) + 
             "/Bill",
             A2.bill
         )) {
