@@ -243,7 +243,7 @@ void loop() {
               pzem1.frequency());
     DEBUG_PRINTLN();
 
-    if (now.second == 0) {
+    if (now.hour == 0 && now.minute == 0 && now.second == 0) {
         if (Firebase.RTDB.setFloat(&fbdo,
             "/" + String(ID1) + 
             "/" + String(now.day) + "-" + String(now.month) + "-" + String(now.year) +
