@@ -1,13 +1,18 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-//TFT
-// #define TFT_CS    27
-// #define TFT_DC    32
-// #define TFT_RST   14
-// #define TFT_SCLK  25
-// #define TFT_MOSI  33
-// #define TFT_MISO  26
+//Serial debug
+#define SERIAL_DEBUG 1
+
+#if SERIAL_DEBUG
+  #define DEBUG_PRINT(...) Serial.print(__VA_ARGS__)
+  #define DEBUG_PRINTLN(...) Serial.println(__VA_ARGS__)
+  #define DEBUG_PRINTF(...) Serial.printf(__VA_ARGS__)
+#else
+  #define DEBUG_PRINT(...)
+  #define DEBUG_PRINTLN(...)
+  #define DEBUG_PRINTF(...)
+#endif
 
 #define TFT_MISO 19
 #define TFT_MOSI 23
@@ -35,6 +40,11 @@
 //RTC DS1307
 #define SDA_PIN 27
 #define SCL_PIN 26
+
+//NTP
+#define NTP_SERVER "pool.ntp.org"
+#define GMT_OFFSET_SEC 7 * 3600
+#define DAYLIGHTOFFSET_SEC 0
 
 //unit price
 #define UNIT_PRICE 3500
