@@ -1,3 +1,4 @@
+#include <Preferences.h>
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_GFX.h>
@@ -18,6 +19,9 @@
 #include <ArduinoJson.h>
 #include "addons/TokenHelper.h"
 #include "addons/RTDBHelper.h"
+
+//Flash init
+Preferences prefs;
 
 //TFT init
 ST7789_extend tft(TFT_CS, TFT_DC, TFT_RST);
@@ -140,6 +144,27 @@ void setup() {
     } else {
         Serial.println("Cannot connect, try later");
     }
+
+    //Write data to Flash
+    if (!isnan(pzem0.voltage()) || !isnan(pzem1.voltage())) {
+        prefs.begin("storage", false);
+        if (!isnan(pzem0.voltage())) {
+            prefs.putDouble("energy_KH1", pzem0.energy());
+        }
+
+        if (!isnan(pzem1.voltage())) {
+            prefs.putDouble("energy_KH2", pzem1.energy());
+        }
+        prefs.end();
+    }
+    
+    //Read data from Flash
+    prefs.begin("storage", true);
+    A1.energy = prefs.getDouble("energy_KH1", 0);
+    A2.energy = prefs.getDouble("energy_KH2", 0);
+    prefs.end();
+    DEBUG_PRINTLN(A1.energy);
+    DEBUG_PRINTLN(A2.energy);
 }
 
 void loop() {
@@ -188,7 +213,7 @@ void loop() {
 
     A1.bill = A1.energy * UNIT_PRICE;
     A2.bill = A2.energy * UNIT_PRICE;
-    
+
     tft.deleteText(20, 140, 2, 10);
     tft.print(A1.energy, 20, 140, 2, ST77XX_WHITE);
     tft.print(" KWh");
