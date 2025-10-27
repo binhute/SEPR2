@@ -56,6 +56,22 @@ The system also uses a **DS1307 RTC** to keep time and log data even when offlin
 
 ---
 
+## 🧠 Software Requirements
+- **VS Code** with **PlatformIO** extension (recommended)
+- Required Libraries:
+
+| Library | Description | Source / Link |
+|----------|--------------|----------------|
+| **Firebase ESP Client** | Firebase Realtime Database client for ESP32 | [GitHub – mobizt/Firebase-ESP-Client](https://github.com/mobizt/Firebase-ESP-Client) |
+| **PZEM004Tv30** | Interface for PZEM-004T v3.0 power monitor | [GitHub – mandulaj/PZEM-004T-v30](https://github.com/mandulaj/PZEM-004T-v30) |
+| **Adafruit ST7789** | Driver for ST7789 SPI TFT display | [GitHub – adafruit/Adafruit-ST7789-Library](https://github.com/adafruit/Adafruit-ST7789-Library) |
+| **Adafruit GFX Library** | Core graphics library for TFT displays | [GitHub – adafruit/Adafruit-GFX-Library](https://github.com/adafruit/Adafruit-GFX-Library) |
+| **RTClib** | Library for DS1307/DS3231 RTC modules | [GitHub – adafruit/RTClib](https://github.com/adafruit/RTClib) |
+| **ArduinoJson** | JSON handling for Firebase requests | [GitHub – bblanchon/ArduinoJson](https://github.com/bblanchon/ArduinoJson) |
+
+
+---
+
 ## 🔐 Setting Up `secret.h`
 
 Create a file named **`secret.h`** inside the **`src/`** folder with your private credentials:
