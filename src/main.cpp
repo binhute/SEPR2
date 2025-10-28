@@ -75,7 +75,11 @@ struct RTC_Data {
     : year(y), month(m), day(d),
         hour(h), minute(min), second(s),
         dayOfWeek(dow) {}
-    };
+};
+
+char timeChar[40];
+char RTDB_time[40];
+String RTDB_timePath;
 
 
 //NTP init
@@ -172,40 +176,30 @@ void loop() {
     RTC_Data now(t.year(), t.month(), t.day(),
                  t.hour(), t.minute(), t.second(),
                  t.dayOfTheWeek());
-    DEBUG_PRINT(daysOfWeek[now.dayOfWeek]);
-    DEBUG_PRINT(" - ");
+    
+    sprintf(timeChar, "%s, %02d/%02d/%04d, %02d:%02d:%02d",
+            daysOfWeek[now.dayOfWeek],
+            now.day,
+            now.month,
+            now.year,
+            now.hour,
+            now.minute,
+            now.second
+    );
 
-    DEBUG_PRINT("Time: ");
-    DEBUG_PRINT(now.hour);
-    DEBUG_PRINT(":");
-    DEBUG_PRINT(now.minute);
-    DEBUG_PRINT(":");
-    DEBUG_PRINT(now.second);
-
-    DEBUG_PRINT("  Date: ");
-    DEBUG_PRINT(now.day);
-    DEBUG_PRINT("/");
-    DEBUG_PRINT(now.month);
-    DEBUG_PRINT("/");
-    DEBUG_PRINTLN(now.year);
-
-    tft.deleteText(5, 20, 2, 23);
-
-    tft.print(daysOfWeek[now.dayOfWeek], 5, 20, 2, ST77XX_WHITE);
-    tft.print(", ");
-    tft.print(now.hour > 9 ? String(now.hour) : "0" + String(now.hour));
-    tft.print(":");
-    tft.print(now.minute > 9 ? String(now.minute) : "0" + String(now.minute));
-    tft.print(":");
-    tft.print(now.second > 9 ? String(now.second) : "0" + String(now.second));
-
-    tft.print(" - ");
-    tft.print(now.day > 9 ? String(now.day) : "0" + String(now.day));
-    tft.print("/");
-    tft.print(now.month > 9 ? String(now.month) : "0" + String(now.month));
-    tft.print("/");
-    tft.print(now.year);
-
+    sprintf(RTDB_time, "%02d-%02d-%04d,%02d:%02d",
+            now.day,
+            now.month,
+            now.year,
+            now.hour,
+            now.minute
+    );
+    
+    DEBUG_PRINTLN(timeChar);
+    
+    tft.deleteText(5, 20, 2, 29);
+    tft.print(timeChar, 5, 20, 2, ST77XX_WHITE);
+    
     if (!isnan(pzem0.voltage()))
         A1.energy = pzem0.energy();
     if (!isnan(pzem1.voltage()))
@@ -242,12 +236,12 @@ void loop() {
               pzem1.energy(),
               pzem1.frequency());
     DEBUG_PRINTLN();
-
+    
+    RTDB_timePath = String(RTDB_time);
     if (now.second == 0) {
         if (Firebase.RTDB.setFloat(&fbdo,
             "/" + String(ID1) + 
-            "/" + String(now.day) + "-" + String(now.month) + "-" + String(now.year) +
-            "," + String(now.hour) + ":" + String(now.minute) + 
+            "/" + RTDB_timePath +
             "/Energy",
             roundf(A1.energy * 100) / 100
         )) {
@@ -257,8 +251,7 @@ void loop() {
 
         if (Firebase.RTDB.setInt(&fbdo,
             "/" + String(ID1) + 
-            "/" + String(now.day) + "-" + String(now.month) + "-" + String(now.year) +
-            "," + String(now.hour) + ":" + String(now.minute) + 
+            "/" + RTDB_timePath +
             "/Bill",
             A1.bill
         )) {
@@ -268,8 +261,7 @@ void loop() {
 
         if (Firebase.RTDB.setFloat(&fbdo,
             "/" + String(ID2) + 
-            "/" + String(now.day) + "-" + String(now.month) + "-" + String(now.year) +
-            "," + String(now.hour) + ":" + String(now.minute) + 
+            "/" + RTDB_timePath +
             "/Energy",
             roundf(A2.energy * 100) / 100
         )) {
@@ -278,8 +270,7 @@ void loop() {
         else DEBUG_PRINTLN(fbdo.errorReason());
         if (Firebase.RTDB.setInt(&fbdo,
             "/" + String(ID2) + 
-            "/" + String(now.day) + "-" + String(now.month) + "-" + String(now.year) +
-            "," + String(now.hour) + ":" + String(now.minute) + 
+            "/" + RTDB_timePath +
             "/Bill",
             A2.bill
         )) {
