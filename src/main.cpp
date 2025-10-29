@@ -5,6 +5,7 @@
 #include <PZEM004Tv30.h>
 #include <Adafruit_ST7789.h>
 #include <string>
+#include <ctype.h>
 #include <math.h>
 #include "ST7789_extend.h"
 #include <Wire.h>
@@ -78,6 +79,7 @@ struct RTC_Data {
 };
 
 char timeChar[40];
+char old_time[40] = "";
 char RTDB_time[40];
 String RTDB_timePath;
 
@@ -195,10 +197,13 @@ void loop() {
             now.minute
     );
     
-    DEBUG_PRINTLN(timeChar);
-    
-    tft.deleteText(5, 20, 2, 29);
-    tft.print(timeChar, 5, 20, 2, ST77XX_WHITE);
+
+    if (strcmp(timeChar, old_time) != 0) {
+        DEBUG_PRINTLN(timeChar);
+        tft.deleteText(5, 20, 2, 29);
+        tft.print(timeChar, 5, 20, 2, ST77XX_WHITE);
+        strcpy(old_time, timeChar);
+    }
     
     if (!isnan(pzem0.voltage()))
         A1.energy = pzem0.energy();
