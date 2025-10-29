@@ -78,6 +78,7 @@ struct RTC_Data {
 };
 
 char timeChar[40];
+char old_time[40] ="";
 char RTDB_time[40];
 String RTDB_timePath;
 
@@ -192,8 +193,6 @@ void loop() {
     DEBUG_PRINT("/");
     DEBUG_PRINTLN(now.year);
 
-    tft.deleteText(5, 20, 2, 23);
-
     sprintf(timeChar, "%s, %02d/%02d/%04d, %02d:%02d:%02d",
             daysOfWeek[now.dayOfWeek],
             now.day,
@@ -212,7 +211,12 @@ void loop() {
             now.minute
     );
 
-    DEBUG_PRINTLN(timeChar);
+    if (strcmp(timeChar, old_time) != 0) {
+        DEBUG_PRINTLN(timeChar);
+        tft.deleteText(5, 20, 2, 29);
+        tft.print(timeChar, 5, 20, 2, ST77XX_WHITE);
+        strcpy(old_time, timeChar);
+    }
 
     if (!isnan(pzem0.voltage()))
         A1.energy = pzem0.energy();
