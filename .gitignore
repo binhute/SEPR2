@@ -22,13 +22,10 @@ Thumbs.db
 *.bak
 *.tmp
 
-# Python (nếu có dùng script trong pio)
+# Python
 __pycache__/
 *.pyc
 
 # Build artifacts
 *.bin
 *.elf
-
-# Secret data
-secret.h

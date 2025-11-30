@@ -100,5 +100,3 @@ Create a file named **`secret.h`** inside the **`src/`** folder with your privat
 
 > ⚠️ **WARNING:** Never upload `secret.h` to any public repository — it contains your private WiFi and Firebase credentials!
 
-
-

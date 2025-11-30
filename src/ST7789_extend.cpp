@@ -1,37 +1,16 @@
 #include "ST7789_extend.h"
 #include <string.h>
 
-/**************************************************************************/
-/*!
-    @brief    Fill the screen completely with one color. Update in subclasses if
-            desired!
-    @param    color 16-bit 5-6-5 Color to fill with
-*/
-/**************************************************************************/
 void ST7789_extend::fillScreen(uint16_t color) {
     Adafruit_ST7789::fillScreen(color);
     stored_screenColor = color;
 }
 
-/**************************************************************************/
-/*!
-    @brief   Set text 'magnification' size. Each increase in s makes 1 pixel
-    that much bigger.
-    @param  s  Desired text size. 1 is default 6x8, 2 is 12x16, 3 is 18x24, etc
-*/
-/**************************************************************************/
 void ST7789_extend::setTextSize(uint8_t size) {
     Adafruit_ST7789::setTextSize(size);
     stored_textSize = size;
 }
 
-/**********************************************************************/
-/*!
-    @brief  Set text cursor location
-    @param  x    X coordinate in pixels
-    @param  y    Y coordinate in pixels
-*/
-/**********************************************************************/
 void ST7789_extend::setCursor (uint16_t x, uint16_t y) {
     Adafruit_ST7789::setCursor(x, y);
     stored_x = x;
@@ -43,16 +22,6 @@ void ST7789_extend::setTextColor(uint16_t color) {
     stored_textColor = color;
 }
 
-/*
-
-*/
-// void ST7789_extend::print(const T &text, uint16_t x, uint16_t y, uint8_t size, uint16_t color) {
-//     setCursor(x, y);
-//     setTextSize(size);
-//     setTextColor(color);
-//     Adafruit_ST7789::print(text);
-//     stored_text = text;
-// }
 
 void ST7789_extend::println(const String &text, uint16_t x, uint16_t y, uint8_t size, uint16_t color, uint16_t dst) {
     setCursor(x, y);
@@ -74,19 +43,6 @@ void ST7789_extend::println(const String &text, uint16_t dst, int color) {
     Serial.println(cursor_y);
 }
 
-
-
-/*!
-    @brief Delete the text wherever on the display.
-    @param  x      Horizontal position of first corner of the text.
-    @param  y      Vertical position of first corner of the text.
-    @param  w      Rectangle width in pixels (positive = right of first
-                corner, negative = left of first corner).
-    @param  h      Rectangle height in pixels (positive = below first
-                corner, negative = above first corner).
-    @param  color  16-bit fill color in '565' RGB format.
-    @param  textLenght The length of the text 
-*/
 void ST7789_extend::deleteText(uint16_t x, uint16_t y, uint8_t size, uint16_t textLength) {
     fillRect
     (
