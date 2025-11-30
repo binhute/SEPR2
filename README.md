@@ -1,11 +1,14 @@
 # ⚡ Smart Energy Monitoring System (Dual Channel)
 
 ## 📘 Overview
-The **Smart Energy Monitoring System** is an IoT-based project using **ESP32** to measure and monitor two independent electrical loads in real time.  
+The **Smart Energy Monitoring System** is an RTOS-based IoT project using **ESP32** to measure and monitor two independent electrical loads in real time.  
 Each load is monitored by a dedicated **PZEM-004T** energy meter.  
-The data (voltage, current, power, and energy) is displayed on a **TFT ST7789** screen and uploaded to **Firebase Realtime Database** for cloud storage.
 
-The system also uses a **DS1307 RTC** to keep time and log data even when offline.
+The collected data — including voltage, current, power, and energy — is displayed locally on a **TFT ST7789** screen and uploaded to **Firebase Realtime Database** for cloud storage.  
+
+The system uses a **DS1307 RTC** to maintain accurate timestamps and log data even when offline.  
+
+Device configuration (Wi-Fi, Firebase credentials) is handled via a **web page stored in LittleFS**, allowing users to set or update parameters directly through a browser without recompiling the code.
 
 ---
 
@@ -16,6 +19,7 @@ The system also uses a **DS1307 RTC** to keep time and log data even when offlin
 - Offline data logging with **RTC DS1307**.  
 - Auto Wi-Fi reconnect every hour using `millis()`.  
 - Flash memory for storing unsent data.  
+- RTOS-based system with web configuration via LittleFS for Wi-Fi, Firebase config.
 
 ---
 
@@ -40,7 +44,6 @@ The system also uses a **DS1307 RTC** to keep time and log data even when offlin
 | **PZEM-004T #2** | RX → GPIO 13, TX → GPIO 14 (Serial1) | Measures Line 2 |
 | **TFT ST7789** | MOSI → GPIO 23, SCK → GPIO 18, CS → GPIO 5, DC → GPIO 2, RST → GPIO 4 |SPI TFT Display |
 | **DS1307 RTC** | SDA → GPIO 27, SCL → GPIO 26 | Real-time clock |
-| **WiFi / Firebase** | Credentials in `secret.h` | Required for cloud sync |
 
 ### Example Pin Definitions:
 ```cpp
@@ -56,7 +59,7 @@ The system also uses a **DS1307 RTC** to keep time and log data even when offlin
 
 ---
 
-## 🧠 Software Requirements
+## 💻 Software Requirements
 - **VS Code** with **PlatformIO** extension (recommended)
 - Required Libraries:
 
@@ -68,35 +71,36 @@ The system also uses a **DS1307 RTC** to keep time and log data even when offlin
 | **Adafruit GFX Library** | Core graphics library for TFT displays | [GitHub – adafruit/Adafruit-GFX-Library](https://github.com/adafruit/Adafruit-GFX-Library) |
 | **RTClib** | Library for DS1307/DS3231 RTC modules | [GitHub – adafruit/RTClib](https://github.com/adafruit/RTClib) |
 | **ArduinoJson** | JSON handling for Firebase requests | [GitHub – bblanchon/ArduinoJson](https://github.com/bblanchon/ArduinoJson) |
+| **ESPAsyncWebServer** | Asynchronous web server for ESP32/ESP8266, used to serve configuration pages and handle HTTP requests | [GitHub – me-no-dev/ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer) |
 
 
 ---
 
-## 🔐 Setting Up `secret.h`
+## 🔐 Configuration via Web Page (LittleFS)
 
-Create a file named **`secret.h`** inside the **`src/`** folder with your private credentials:
+This project uses a web-based configuration page stored in LittleFS instead of compile-time constants.  
+Users can enter their Wi-Fi, Firebase information, and other parameters directly from a browser.  
+All settings are saved to flash and automatically loaded at startup.
 
-```cpp
-// secret.h
-#ifndef SECRET_H
-#define SECRET_H
+### Steps to Upload Configuration Page
+1. Place your configuration file (`index.html` and `style.css`) inside:
+   `data/`
 
-// Wi-Fi Credentials
-#define WIFI_SSID "Your_WiFi_Name"
-#define WIFI_PASSWORD "Your_WiFi_Password"
+2. Upload the file to LittleFS using PlatformIO:
+   - VS Code → PlatformIO → "Upload Filesystem Image"
+   - Or CLI:
+        ```shell
+        pio run --target uploadfs
+        ```
 
-// Device ID (unique for each Pzem sensor)
-#define ID1 "KH00001"
-#define ID2 "KH00002"
+3. Reboot the ESP32.  
+   The device will create an Access Point (AP) and host the configuration webpage.
 
-// Firebase Configuration
-#define API_KEY "Your_Firebase_API_Key"
-#define DATABASE_URL "https://your-project-id.firebaseio.com/"
-#define USER_EMAIL "your_email@example.com"
-#define USER_PASSWORD "your_password"
+4. Connect to the AP (SSID: `config`, password: `12345678` or change its in your code) → open a browser → fill in Wi-Fi & Firebase configuration values.  
+   The ESP32 saves them to flash and reconnects automatically.
 
-#endif
-```
+> ⚠️ WARNING:  
+> Credentials are stored inside the device.  
+> Do **not** upload filesystem images or flash dumps to public repositories.
 
-> ⚠️ **WARNING:** Never upload `secret.h` to any public repository — it contains your private WiFi and Firebase credentials!
 
