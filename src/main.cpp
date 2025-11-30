@@ -1,14 +1,17 @@
 #include <Preferences.h>
 #include <Wire.h>
 #include <SPI.h>
-#include <Adafruit_GFX.h>
-#include <PZEM004Tv30.h>
-#include <Adafruit_ST7789.h>
 #include <string>
 #include <ctype.h>
-#include <math.h>
+#include <freertos/task.h>
+#include <freertos/queue.h>
+#include <LittleFS.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7789.h>
 #include "ST7789_extend.h"
-#include <Wire.h>
+#include <PZEM004Tv30.h>
+#include <ESPAsyncWebServer.h>
+#include <math.h>
 #include <RTClib.h>
 #include <WiFi.h>
 #include "time.h"
@@ -20,270 +23,148 @@
 #include <ArduinoJson.h>
 #include "addons/TokenHelper.h"
 #include "addons/RTDBHelper.h"
+#include "Task_normal_operation.h"
 
-//Flash init
+TaskHandle_t normalOpe_handle = NULL;
+AsyncWebServer server(80);
 Preferences prefs;
 
-//TFT init
-ST7789_extend tft(TFT_CS, TFT_DC, TFT_RST);
+bool isConfigSaved() {
+    if (!prefs.begin("config", true)) {
+        prefs.end();
+        return false;
+    }
 
-//Pzem init
-PZEM004Tv30 pzem0(PZEM0_SERIAL, PZEM0_RX_PIN, PZEM0_TX_PIN);
-PZEM004Tv30 pzem1(PZEM1_SERIAL, PZEM1_RX_PIN, PZEM1_TX_PIN);
+    bool hasSSID      = prefs.isKey("ssid");
+    bool hasPass      = prefs.isKey("wifipass");
+    bool hasFBurl     = prefs.isKey("fburl");
+    bool hasFBapi     = prefs.isKey("fbapi");
+    bool hasEmail     = prefs.isKey("email");
+    bool hasEmailPass = prefs.isKey("emailpass");
+    bool hasRoom1     = prefs.isKey("room1");
+    bool hasRoom2     = prefs.isKey("room2");
+    bool hasUnitTier  = prefs.isKey("unitOrTier");
 
-//User data
-struct users_data {
-    String Room;
-    double energy;
-    uint16_t bill;
+    prefs.end();
 
-    users_data(const String& room, uint16_t energyVal, uint16_t billVal)
-        : Room(room), energy(energyVal), bill(billVal) {}
-};
+    return (
+        hasSSID && hasPass &&
+        hasFBurl && hasFBapi &&
+        hasEmail && hasEmailPass &&
+        hasRoom1 && hasRoom2 &&
+        hasUnitTier
+    );
+}
 
-//User data init
-users_data A1("P01", 0, 0);
-users_data A2("P02", 0, 0);
+void startAP(const String &ssid, const String &password) {
+    DEBUG_PRINTLN("Starting AP mode...");
 
-//RTC init
-RTC_DS1307 rtc;
-const char* daysOfWeek[] = {
-  "Sun",    // 0
-  "Mon",    // 1
-  "Tue",   // 2
-  "Wed", // 3
-  "Thu",  // 4
-  "Fri",    // 5
-  "Sat"   // 6
-};
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(ssid.c_str(), password.c_str());
 
-struct RTC_Data {
-    uint16_t year;
-    uint8_t month;
-    uint8_t day;
-    uint8_t hour;
-    uint8_t minute;
-    uint8_t second;
-    uint8_t dayOfWeek;
+    DEBUG_PRINTLN("AP IP: ");
+    DEBUG_PRINTLN(WiFi.softAPIP());
 
-    RTC_Data()
-    : year(0), month(0), day(0),
-        hour(0), minute(0), second(0),
-        dayOfWeek(0) {}
+    if (!LittleFS.begin(true)) {
+        DEBUG_PRINTLN("LittleFS mount failed!");
+        return;
+    }
 
-    RTC_Data(uint16_t y, uint8_t m, uint8_t d,
-            uint8_t h, uint8_t min, uint8_t s, uint8_t dow)
-    : year(y), month(m), day(d),
-        hour(h), minute(min), second(s),
-        dayOfWeek(dow) {}
-};
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(LittleFS, "/index.html", "text/html");
+    });
 
-char timeChar[40];
-char old_time[40] = "";
-char RTDB_time[40];
-String RTDB_timePath;
+    server.serveStatic("/", LittleFS, "/");
+
+    server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request){
+        prefs.begin("config");
+        prefs.putString("ssid",       request->arg("ssid"));
+        prefs.putString("wifipass",   request->arg("wifipass"));
+        prefs.putString("fburl",      request->arg("fburl"));
+        prefs.putString("fbapi",      request->arg("fbapi"));
+        prefs.putString("email",      request->arg("email"));
+        prefs.putString("emailpass",  request->arg("emailpass"));
+        prefs.putString("room1",      request->arg("room1"));
+        prefs.putString("room2",      request->arg("room2"));
+        prefs.putString("unitOrTier", request->arg("unitOrTier"));
+        prefs.end();
+
+        request->send(200, "text/plain", "Saved! Rebooting...");
+        DEBUG_PRINTLN("Config saved -> Restarting");
+        delay(500);
+        ESP.restart();
+    });
+
+    server.on("/exit", HTTP_GET, [](AsyncWebServerRequest *request) {
+        DEBUG_PRINTLN("Exiting");
+        request->send(200, "text/plain", "Exiting setup mode...");
+        ESP.restart();
+    });
+
+    server.begin();
+    DEBUG_PRINTLN("AP server started");
+}
+
+SystemConfig cfg;
+
+bool loadConfig() {
+    if (!prefs.begin("config", true)) {
+        prefs.end();
+        return false;
+    }
+
+    cfg.ssid       = prefs.getString("ssid", "");
+    cfg.wifipass   = prefs.getString("wifipass", "");
+    cfg.fburl      = prefs.getString("fburl", "");
+    cfg.fbapi      = prefs.getString("fbapi", "");
+    cfg.email      = prefs.getString("email", "");
+    cfg.emailpass  = prefs.getString("emailpass", "");
+    cfg.room1      = prefs.getString("room1", "");
+    cfg.room2      = prefs.getString("room2", "");
+    cfg.unitOrTier = prefs.getString("unitOrTier", "");
+
+    prefs.end();
+    return true;
+}
 
 
-//NTP init
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, NTP_SERVER, GMT_OFFSET_SEC);
-
-//firebase object
-FirebaseData fbdo;
-FirebaseAuth auth;
-FirebaseConfig config;
-FirebaseJson json;
-
-unsigned long startAttemptTime = millis();
+ST7789_extend *tft = new ST7789_extend(TFT_CS, TFT_DC, TFT_RST);
 
 void setup() {
     Serial.begin(115200);
-    Wire.begin(SDA_PIN, SCL_PIN);
-
-    rtc.begin();
-    tft.init(240, 320); 
-    tft.invertDisplay(0);
-    tft.fillScreen(ST77XX_BLACK);
-    tft.setRotation(1);
-    tft.initTable(0, 0, 320, 50, 1, 1, ST77XX_BLUE);
-    tft.addTable(240 - 50, 3, 2, ST77XX_BLUE);
-    tft.print(A1.Room, 60, 70, 2, ST77XX_WHITE);
-    tft.print(A2.Room, 220, 70, 2, ST77XX_WHITE);
-
-    //Wifi On
-    WiFi.begin(SSID, PASSWORD);
-    while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 5000) {
-        Serial.print(".");
-        delay(500);
+    LittleFS.begin();
+    DEBUG_PRINTLN("CHECKING CONFIG!");
+    tft->init(240, 320);
+    tft->invertDisplay(0);
+    tft->setRotation(1);
+    if (!isConfigSaved()) {
+        DEBUG_PRINTLN("Config not found");
+        startAP("config", "12345678");
+        tft->fillScreen(ST77XX_BLACK);
+        tft->print("Waiting for config...", 1, 1, 2, ST77XX_WHITE);
+        while(!isConfigSaved()) {
+            delay(500);
+        }
     }
-
-    if (WiFi.status() == WL_CONNECTED) {
-        DEBUG_PRINTLN("Connected Successfully");
-        DEBUG_PRINTLN(WiFi.localIP());
-
-        timeClient.begin();
-        timeClient.update();
-        for (int i=0; i<5; i++) {
-            unsigned long epochTime = timeClient.getEpochTime();
-            DateTime ntpTime = DateTime(epochTime);
-            rtc.adjust(ntpTime);
-        }
-    
-        //Firebase config
-        config.api_key = API_KEY;
-        config.database_url = DATABASE_URL;
-
-        //Authentication
-        auth.user.email = USER_EMAIL;
-        auth.user.password = USER_PASSWORD;
-
-        //debug token
-        config.token_status_callback = tokenStatusCallback;
-
-        //Firebase init
-        Firebase.begin(&config, &auth);
-        Firebase.reconnectWiFi(true);
-        fbdo.setResponseSize(512);
-
-        //Wifi sleep
-        WiFi.setSleep(true);
-    } else {
-        Serial.println("Cannot connect, try later");
-    }
-
-    //Write data to Flash
-    if (!isnan(pzem0.voltage()) || !isnan(pzem1.voltage())) {
-        prefs.begin("storage", false);
-        if (!isnan(pzem0.voltage())) {
-            prefs.putDouble("energy_KH1", pzem0.energy());
-        }
-
-        if (!isnan(pzem1.voltage())) {
-            prefs.putDouble("energy_KH2", pzem1.energy());
-        }
-        prefs.end();
+    else {
+        loadConfig();
+        DEBUG_PRINTLN(cfg.fburl);
     }
     
-    //Read data from Flash
-    prefs.begin("storage", true);
-    A1.energy = prefs.getDouble("energy_KH1", 0);
-    A2.energy = prefs.getDouble("energy_KH2", 0);
-    prefs.end();
-    DEBUG_PRINTLN(A1.energy);
-    DEBUG_PRINTLN(A2.energy);
+    tft->fillScreen(ST77XX_BLACK);
+    delete tft;
+    tft = nullptr;
+
+    DEBUG("Begin tasks");
+    xTaskCreatePinnedToCore(
+        TaskNormalOpe,
+        "Normal Operation",
+        4096,
+        NULL,
+        1,
+        &normalOpe_handle,
+        1
+    );
 }
 
-void loop() {
-    DateTime t = rtc.now();
-    RTC_Data now(t.year(), t.month(), t.day(),
-                 t.hour(), t.minute(), t.second(),
-                 t.dayOfTheWeek());
-    
-    sprintf(timeChar, "%s, %02d/%02d/%04d, %02d:%02d:%02d",
-            daysOfWeek[now.dayOfWeek],
-            now.day,
-            now.month,
-            now.year,
-            now.hour,
-            now.minute,
-            now.second
-    );
-
-    sprintf(RTDB_time, "%02d-%02d-%04d,%02d:%02d",
-            now.day,
-            now.month,
-            now.year,
-            now.hour,
-            now.minute
-    );
-    
-
-    if (strcmp(timeChar, old_time) != 0) {
-        DEBUG_PRINTLN(timeChar);
-        tft.deleteText(5, 20, 2, 29);
-        tft.print(timeChar, 5, 20, 2, ST77XX_WHITE);
-        strcpy(old_time, timeChar);
-    }
-    
-    if (!isnan(pzem0.voltage()))
-        A1.energy = pzem0.energy();
-    if (!isnan(pzem1.voltage()))
-        A2.energy = pzem1.energy();
-
-    A1.bill = A1.energy * UNIT_PRICE;
-    A2.bill = A2.energy * UNIT_PRICE;
-
-    tft.deleteText(20, 140, 2, 10);
-    tft.print(A1.energy, 20, 140, 2, ST77XX_WHITE);
-    tft.print(" KWh");
-    tft.deleteText(180, 140, 2, 10);
-    tft.print(A2.energy, 180, 140, 2, ST77XX_WHITE);
-    tft.print(" KWh");
-    
-    tft.deleteText(10, 200, 2, 12);
-    tft.print(A1.bill, 10, 200, 2, ST77XX_WHITE);
-    tft.print(" VND");
-    tft.deleteText(170, 200, 2, 12);
-    tft.print(A2.bill, 170, 200, 2, ST77XX_WHITE);
-    tft.print(" VND");
-    DEBUG_PRINTLN();
-    DEBUG_PRINTF("%.1f V, %.2f A, %.1f W, %.3f kWh, %.1f Hz",
-              pzem0.voltage(),
-              pzem0.current(),
-              pzem0.power(),
-              pzem0.energy(),
-              pzem0.frequency());
-    DEBUG_PRINTLN();
-    DEBUG_PRINTF("%.1f V, %.2f A, %.1f W, %.3f kWh, %.1f Hz",
-              pzem1.voltage(),
-              pzem1.current(),
-              pzem1.power(),
-              pzem1.energy(),
-              pzem1.frequency());
-    DEBUG_PRINTLN();
-    
-    RTDB_timePath = String(RTDB_time);
-    if (now.second == 0) {
-        if (Firebase.RTDB.setFloat(&fbdo,
-            "/" + String(ID1) + 
-            "/" + RTDB_timePath +
-            "/Energy",
-            roundf(A1.energy * 100) / 100
-        )) {
-            DEBUG_PRINTLN("Success upload");
-        }
-        else DEBUG_PRINTLN(fbdo.errorReason());
-
-        if (Firebase.RTDB.setInt(&fbdo,
-            "/" + String(ID1) + 
-            "/" + RTDB_timePath +
-            "/Bill",
-            A1.bill
-        )) {
-            DEBUG_PRINTLN("Success upload");
-        }
-        else DEBUG_PRINTLN(fbdo.errorReason());
-
-        if (Firebase.RTDB.setFloat(&fbdo,
-            "/" + String(ID2) + 
-            "/" + RTDB_timePath +
-            "/Energy",
-            roundf(A2.energy * 100) / 100
-        )) {
-            DEBUG_PRINTLN("Success upload");
-        }
-        else DEBUG_PRINTLN(fbdo.errorReason());
-        if (Firebase.RTDB.setInt(&fbdo,
-            "/" + String(ID2) + 
-            "/" + RTDB_timePath +
-            "/Bill",
-            A2.bill
-        )) {
-            DEBUG_PRINTLN("Success upload");
-        }
-        else DEBUG_PRINTLN(fbdo.errorReason());
-
-        WiFi.setSleep(true);
-    }
-    delay(500);
-}
+void loop() {}

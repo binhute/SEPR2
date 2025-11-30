@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Config</title>
+</head>
+<body style="background-color: #f4f0f0;">
+    <div class="container">
+        <h1 style="color: orange;">⚡Smart Energy Monitoring System</h1>
+        <form class="form" action="/save" method="POST">
+            <input class="form-box" placeholder="WiFi SSID" name="ssid" required>
+
+            <input class="form-box" name="wifipass" placeholder="WiFi Password" type="password" required>
+
+            <input class="form-box" name="fburl" placeholder="Firebase URL" required>
+
+            <input class="form-box" name="fbapi" placeholder="Firebase API Key" required>
+
+            <input class="form-box" name="email" placeholder="Email" required>
+
+            <input class="form-box" name="emailpass" placeholder="Email Password" type="password" required>
+
+            <input class="form-box" name="room1" placeholder="Display name for Room 1" required>
+
+            <input class="form-box" name="room2" placeholder="Display name for Room 1" required>
+            <div class="radio">
+                <input type="radio" id="unit" name="unitOrTier" value="unit" required>
+                <label for="unit">Unit Price</label>
+
+                <input type="radio" id="tier" name="unitOrTier" value="tier" required>
+                <label for="tier">Tier Price</label>
+            </div>
+            <button class="form-item btn btn--summit" type="submit">Save & Reboot</button>
+        </form>
+        <button class="btn btn--exit" onclick="location.href='/exit'">Exit</button>
+    </div>
+</body>
+</html>
