@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <string>
 #include <ctype.h>
+#include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
 #include <LittleFS.h>
@@ -20,13 +21,18 @@
 #include <WiFiUdp.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include "addons/TokenHelper.h"
-#include "addons/RTDBHelper.h"
 #include "Task_normal_operation.h"
+#include "Task_wifi_cloud.h"
 
-TaskHandle_t normalOpe_handle = NULL;
 AsyncWebServer server(80);
 Preferences prefs;
+
+//Task
+TaskHandle_t normalOpe_handle = NULL;
+TaskHandle_t wifiCloud_handle = NULL;
+
+//Queue
+QueueHandle_t firebaseUpload;
 
 bool isConfigSaved() {
     if (!prefs.begin("config", true)) {
@@ -43,6 +49,7 @@ bool isConfigSaved() {
     bool hasRoom1     = prefs.isKey("room1");
     bool hasRoom2     = prefs.isKey("room2");
     bool hasUnitTier  = prefs.isKey("unitOrTier");
+    bool unitPrice    = prefs.isKey("unitPrice");
 
     prefs.end();
 
@@ -51,7 +58,7 @@ bool isConfigSaved() {
         hasFBurl && hasFBapi &&
         hasEmail && hasEmailPass &&
         hasRoom1 && hasRoom2 &&
-        hasUnitTier
+        hasUnitTier && unitPrice
     );
 }
 
@@ -86,6 +93,7 @@ void startAP(const String &ssid, const String &password) {
         prefs.putString("room1",      request->arg("room1"));
         prefs.putString("room2",      request->arg("room2"));
         prefs.putString("unitOrTier", request->arg("unitOrTier"));
+        prefs.putString("unitPrice",  request->arg("unitPrice"));
         prefs.end();
 
         request->send(200, "text/plain", "Saved! Rebooting...");
@@ -121,6 +129,7 @@ bool loadConfig() {
     cfg.room1      = prefs.getString("room1", "");
     cfg.room2      = prefs.getString("room2", "");
     cfg.unitOrTier = prefs.getString("unitOrTier", "");
+    cfg.unitPrice  = prefs.getString("unitPrice", "");
 
     prefs.end();
     return true;
@@ -130,6 +139,7 @@ ST7789_extend *tft = new ST7789_extend(TFT_CS, TFT_DC, TFT_RST);
 
 void setup() {
     Serial.begin(115200);
+    firebaseUpload = xQueueCreate(10, sizeof(fbData));
     LittleFS.begin();
     DEBUG_PRINTLN("CHECKING CONFIG!");
     tft->init(240, 320);
@@ -152,15 +162,24 @@ void setup() {
     tft->fillScreen(ST77XX_BLACK);
     delete tft;
     tft = nullptr;
-
     DEBUG("Begin tasks");
     xTaskCreatePinnedToCore(
         TaskNormalOpe,
         "Normal Operation",
         4096,
         NULL,
-        1,
+        6,
         &normalOpe_handle,
+        0
+    );
+
+    xTaskCreatePinnedToCore(
+        TaskWifiCloud,
+        "Wifi Cloud",
+        10000,
+        NULL,
+        4,
+        &wifiCloud_handle,
         1
     );
 }

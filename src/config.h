@@ -46,8 +46,9 @@
 #define GMT_OFFSET_SEC 7 * 3600
 #define DAYLIGHTOFFSET_SEC 0
 
-//unit price
-#define UNIT_PRICE 3500
+//customer id
+#define ID1 "C000001"
+#define ID2 "C000002"
 
 struct SystemConfig {
     String ssid;
@@ -59,6 +60,18 @@ struct SystemConfig {
     String room1;
     String room2;
     String unitOrTier;
+    String unitPrice;
 };
+
+#define ACK_OK (1 << 0)
+#define ACK_FAIL (1 << 1)
+
+typedef struct {
+    char regularTime[32];
+    float energy_1;
+    float energy_2;
+    long cost_1;
+    long cost_2;
+} fbData;
 
 #endif

@@ -1,17 +1,6 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include <Wire.h>
-#include <string>
-#include <ctype.h>
-#include <Preferences.h>
-#include "config.h"
-#include <PZEM004Tv30.h>
-#include "ST7789_extend.h"
-#include <RTClib.h>
 #include <Task_normal_operation.h>
 
-
-long tieredElectricCalculate(int kwh, ElectricityTier tiers[], int size, bool includeVAT) {
+static long tieredElectricCalculate(int kwh, ElectricityTier tiers[], int size, bool includeVAT) {
     long total = 0;
     int remaining = kwh;
 
@@ -35,8 +24,6 @@ long tieredElectricCalculate(int kwh, ElectricityTier tiers[], int size, bool in
 }
 
 void TaskNormalOpe(void *parameter) {
-    //Flash init
-    
     //TFT init
     ST7789_extend tft(TFT_CS, TFT_DC, TFT_RST);
 
@@ -48,10 +35,10 @@ void TaskNormalOpe(void *parameter) {
     struct users_data {
         String Room;
         double energy;
-        uint16_t bill;
+        uint16_t cost;
 
         users_data(const String& room, uint16_t energyVal, uint16_t billVal)
-            : Room(room), energy(energyVal), bill(billVal) {}
+            : Room(room), energy(energyVal), cost(billVal) {}
     };
 
     //User data init
@@ -92,16 +79,18 @@ void TaskNormalOpe(void *parameter) {
     };
 
     char timeChar[40];
-    char old_time[40] = "";
+    char old_time[40];
     char RTDB_time[40];
+    uint8_t timeOffset = 25;
+    fbData fbDataSend;
 
     ElectricityTier tiers[] = {
-        {50,   1806},   // tier 1
-        {50,   1866},   // tier 2
-        {100,  2167},   // tier 3
-        {100,  2729},   // tier 4
-        {100,  3050},   // tier 5
-        {-1,   3151},   // tier 6
+        {50,   1984},   // tier 1
+        {50,   2050},   // tier 2
+        {100,  2380},   // tier 3
+        {100,  2998},   // tier 4
+        {100,  3350},   // tier 5
+        {-1,   3460},   // tier 6
     };
 
     Wire.begin(SDA_PIN, SCL_PIN);
@@ -155,7 +144,7 @@ void TaskNormalOpe(void *parameter) {
         );
         
         if (strcmp(timeChar, old_time) != 0) {
-            DEBUG_PRINTLN(timeChar);
+            // DEBUG_PRINTLN(timeChar);
             tft.deleteText(5, 20, 2, 29);
             tft.print(timeChar, 5, 20, 2, ST77XX_WHITE);
             strcpy(old_time, timeChar);
@@ -167,12 +156,12 @@ void TaskNormalOpe(void *parameter) {
             A2.energy = pzem1.energy();
 
         if (cfg.unitOrTier == "tier") {
-            A1.bill = tieredElectricCalculate(A1.energy, tiers, 6, true);
-            A2.bill = tieredElectricCalculate(A2.energy, tiers, 6, true);
+            A1.cost = tieredElectricCalculate(A1.energy, tiers, 6, true);
+            A2.cost = tieredElectricCalculate(A2.energy, tiers, 6, true);
         }
         else if (cfg.unitOrTier == "unit") {
-            A1.bill = A1.energy * UNIT_PRICE;
-            A2.bill = A2.energy * UNIT_PRICE;
+            A1.cost = A1.energy * cfg.unitPrice.toInt();
+            A2.cost = A2.energy * cfg.unitPrice.toInt();
         }
 
         tft.deleteText(20, 140, 2, 10);
@@ -183,27 +172,45 @@ void TaskNormalOpe(void *parameter) {
         tft.print(" KWh");
         
         tft.deleteText(10, 200, 2, 12);
-        tft.print(A1.bill, 10, 200, 2, ST77XX_WHITE);
+        tft.print(A1.cost, 10, 200, 2, ST77XX_WHITE);
         tft.print(" VND");
         tft.deleteText(170, 200, 2, 12);
-        tft.print(A2.bill, 170, 200, 2, ST77XX_WHITE);
+        tft.print(A2.cost, 170, 200, 2, ST77XX_WHITE);
         tft.print(" VND");
-        DEBUG_PRINTLN();
-        DEBUG_PRINTF("%.1f V, %.2f A, %.1f W, %.3f kWh, %.1f Hz",
-                pzem0.voltage(),
-                pzem0.current(),
-                pzem0.power(),
-                pzem0.energy(),
-                pzem0.frequency());
-        DEBUG_PRINTLN();
-        DEBUG_PRINTF("%.1f V, %.2f A, %.1f W, %.3f kWh, %.1f Hz",
-                pzem1.voltage(),
-                pzem1.current(),
-                pzem1.power(),
-                pzem1.energy(),
-                pzem1.frequency());
-        DEBUG_PRINTLN();
+        // DEBUG_PRINTLN();
+        // DEBUG_PRINTF("%.1f V, %.2f A, %.1f W, %.3f kWh, %.1f Hz",
+        //         pzem0.voltage(),
+        //         pzem0.current(),
+        //         pzem0.power(),
+        //         pzem0.energy(),
+        //         pzem0.frequency());
+        // DEBUG_PRINTLN();
+        // DEBUG_PRINTF("%.1f V, %.2f A, %.1f W, %.3f kWh, %.1f Hz",
+        //         pzem1.voltage(),
+        //         pzem1.current(),
+        //         pzem1.power(),
+        //         pzem1.energy(),
+        //         pzem1.frequency());
+        // DEBUG_PRINTLN();
 
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        if (now.second == 0 && timeOffset != now.minute) {
+            fbDataSend.cost_1 = A1.cost;
+            fbDataSend.cost_2 = A2.cost;
+            fbDataSend.energy_1 = A1.energy;
+            fbDataSend.energy_2 = A2.energy;
+            sprintf(RTDB_time, "%02d-%02d-%04d,%02d:%02d",
+                now.day,
+                now.month,
+                now.year,
+                now.hour,
+                now.minute
+            );
+            strcpy(fbDataSend.regularTime, RTDB_time);
+            xQueueSend(firebaseUpload, &fbDataSend, portMAX_DELAY);
+            DEBUG_PRINTLN("SENT");
+            timeOffset = now.minute;
+        }
+
+        vTaskDelay(200 / portTICK_PERIOD_MS);
     }
 }
