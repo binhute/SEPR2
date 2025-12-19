@@ -34,16 +34,17 @@ void TaskNormalOpe(void *parameter) {
     //User data
     struct users_data {
         String Room;
-        double energy;
+        uint8_t voltage;
+        float energy;
         uint16_t cost;
 
-        users_data(const String& room, uint16_t energyVal, uint16_t billVal)
-            : Room(room), energy(energyVal), cost(billVal) {}
+        users_data(const String& room, uint8_t voltageVal, float energyVal, uint16_t billVal)
+            : Room(room), voltage(voltageVal), energy(energyVal), cost(billVal) {}
     };
 
     //User data init
-    users_data A1(cfg.room1, 0, 0);
-    users_data A2(cfg.room2, 0, 0);
+    users_data A1(cfg.room1, 0, 0, 0);
+    users_data A2(cfg.room2, 0, 0, 0);
 
     //RTC init
     RTC_DS1307 rtc;
@@ -80,7 +81,6 @@ void TaskNormalOpe(void *parameter) {
 
     char timeChar[40];
     char old_time[40];
-    char RTDB_time[40];
     uint8_t timeOffset = 25;
     fbData fbDataSend;
 
@@ -103,7 +103,6 @@ void TaskNormalOpe(void *parameter) {
     tft.addTable(240 - 50, 3, 2, ST77XX_BLUE);
     tft.print(A1.Room, 60, 70, 2, ST77XX_WHITE);
     tft.print(A2.Room, 220, 70, 2, ST77XX_WHITE);
-
     //Write data to Flash
     if (!isnan(pzem0.voltage()) || !isnan(pzem1.voltage())) {
         prefs.begin("storage", false);
@@ -150,10 +149,14 @@ void TaskNormalOpe(void *parameter) {
             strcpy(old_time, timeChar);
         }
         
-        if (!isnan(pzem0.voltage()))
+        if (!isnan(pzem0.voltage())) {
+            A1.voltage = pzem0.voltage();
             A1.energy = pzem0.energy();
-        if (!isnan(pzem1.voltage()))
+        }
+        if (!isnan(pzem1.voltage())) {
+            A2.voltage = pzem1.voltage();
             A2.energy = pzem1.energy();
+        }
 
         if (cfg.unitOrTier == "tier") {
             A1.cost = tieredElectricCalculate(A1.energy, tiers, 6, true);
@@ -193,23 +196,28 @@ void TaskNormalOpe(void *parameter) {
         //         pzem1.frequency());
         // DEBUG_PRINTLN();
 
-        if (now.second == 0 && timeOffset != now.minute) {
-            fbDataSend.cost_1 = A1.cost;
-            fbDataSend.cost_2 = A2.cost;
-            fbDataSend.energy_1 = A1.energy;
-            fbDataSend.energy_2 = A2.energy;
-            sprintf(RTDB_time, "%02d-%02d-%04d,%02d:%02d",
-                now.day,
-                now.month,
-                now.year,
-                now.hour,
-                now.minute
-            );
-            strcpy(fbDataSend.regularTime, RTDB_time);
-            xQueueSend(firebaseUpload, &fbDataSend, portMAX_DELAY);
-            DEBUG_PRINTLN("SENT");
-            timeOffset = now.minute;
-        }
+        // if (now.second == 0 && timeOffset != now.minute) {
+        //     fbDataSend.voltage_1 = A1.voltage;
+        //     fbDataSend.voltage_2 = A2.voltage;
+        //     fbDataSend.cost_1 = A1.cost;
+        //     fbDataSend.cost_2 = A2.cost;
+        //     fbDataSend.energy_1 = A1.energy;
+        //     fbDataSend.energy_2 = A2.energy;
+        //     sprintf(fbDataSend.dayStamp, "%02d-%02d-%04d",
+        //         now.day,
+        //         now.month,
+        //         now.year
+        //     );
+        //     sprintf(fbDataSend.timeStamp, "%02d:%02d",
+        //         now.hour,
+        //         now.minute
+        //     );
+        //     DEBUG_PRINTLN(fbDataSend.dayStamp);
+        //     DEBUG_PRINTLN(fbDataSend.timeStamp);
+        //     xQueueSend(firebaseUpload, &fbDataSend, portMAX_DELAY);
+        //     DEBUG_PRINTLN("SENT");
+        //     timeOffset = now.minute;
+        // }
 
         vTaskDelay(200 / portTICK_PERIOD_MS);
     }

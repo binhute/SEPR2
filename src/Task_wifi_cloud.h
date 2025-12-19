@@ -10,9 +10,14 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Firebase.h>
+#include <BluetoothSerial.h>
+#include "esp_bt.h"
 
 extern Preferences prefs;
 extern SystemConfig cfg;
 extern QueueHandle_t firebaseUpload;
 
+// void changeBtName(const char* newName);
+String parseSSID(String msg);
+String parsePassword(String msg);
 void TaskWifiCloud(void *pvParameters);

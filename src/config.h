@@ -51,8 +51,6 @@
 #define ID2 "C000002"
 
 struct SystemConfig {
-    String ssid;
-    String wifipass;
     String fburl;
     String fbapi;
     String email;
@@ -63,15 +61,21 @@ struct SystemConfig {
     String unitPrice;
 };
 
-#define ACK_OK (1 << 0)
-#define ACK_FAIL (1 << 1)
-
 typedef struct {
-    char regularTime[32];
+    char dayStamp[20];
+    char timeStamp[25];
+    uint8_t voltage_1;
+    uint8_t voltage_2;
     float energy_1;
     float energy_2;
     long cost_1;
     long cost_2;
 } fbData;
+
+enum class mode {
+    device_1,
+    device_2,
+    OFF
+};
 
 #endif

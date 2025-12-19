@@ -7,10 +7,7 @@
 #include <freertos/task.h>
 #include <freertos/queue.h>
 #include <LittleFS.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_ST7789.h>
-#include "ST7789_extend.h"
-#include <PZEM004Tv30.h>
+#include <BluetoothSerial.h>
 #include <ESPAsyncWebServer.h>
 #include <math.h>
 #include <RTClib.h>
@@ -23,6 +20,7 @@
 #include <ArduinoJson.h>
 #include "Task_normal_operation.h"
 #include "Task_wifi_cloud.h"
+#include "json_storage.h"
 
 AsyncWebServer server(80);
 Preferences prefs;
@@ -34,14 +32,15 @@ TaskHandle_t wifiCloud_handle = NULL;
 //Queue
 QueueHandle_t firebaseUpload;
 
+//Bluetooth classic
+BluetoothSerial SerialBT;
+
 bool isConfigSaved() {
     if (!prefs.begin("config", true)) {
         prefs.end();
         return false;
     }
 
-    bool hasSSID      = prefs.isKey("ssid");
-    bool hasPass      = prefs.isKey("wifipass");
     bool hasFBurl     = prefs.isKey("fburl");
     bool hasFBapi     = prefs.isKey("fbapi");
     bool hasEmail     = prefs.isKey("email");
@@ -49,16 +48,15 @@ bool isConfigSaved() {
     bool hasRoom1     = prefs.isKey("room1");
     bool hasRoom2     = prefs.isKey("room2");
     bool hasUnitTier  = prefs.isKey("unitOrTier");
-    bool unitPrice    = prefs.isKey("unitPrice");
+    bool hasunitPrice = prefs.isKey("unitPrice");
 
     prefs.end();
 
     return (
-        hasSSID && hasPass &&
         hasFBurl && hasFBapi &&
         hasEmail && hasEmailPass &&
         hasRoom1 && hasRoom2 &&
-        hasUnitTier && unitPrice
+        hasUnitTier && hasunitPrice
     );
 }
 
@@ -73,7 +71,7 @@ void startAP(const String &ssid, const String &password) {
 
     if (!LittleFS.begin(true)) {
         DEBUG_PRINTLN("LittleFS mount failed!");
-        return;
+        ESP.restart();
     }
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -84,8 +82,6 @@ void startAP(const String &ssid, const String &password) {
 
     server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request){
         prefs.begin("config");
-        prefs.putString("ssid",       request->arg("ssid"));
-        prefs.putString("wifipass",   request->arg("wifipass"));
         prefs.putString("fburl",      request->arg("fburl"));
         prefs.putString("fbapi",      request->arg("fbapi"));
         prefs.putString("email",      request->arg("email"));
@@ -120,8 +116,6 @@ bool loadConfig() {
         return false;
     }
 
-    cfg.ssid       = prefs.getString("ssid", "");
-    cfg.wifipass   = prefs.getString("wifipass", "");
     cfg.fburl      = prefs.getString("fburl", "");
     cfg.fbapi      = prefs.getString("fbapi", "");
     cfg.email      = prefs.getString("email", "");
@@ -137,10 +131,27 @@ bool loadConfig() {
 
 ST7789_extend *tft = new ST7789_extend(TFT_CS, TFT_DC, TFT_RST);
 
+mode BtMode;
+
+String wssid, wpassword;
+
 void setup() {
     Serial.begin(115200);
     firebaseUpload = xQueueCreate(10, sizeof(fbData));
-    LittleFS.begin();
+
+    DEBUG_PRINTLN("CHECKING WIFI!");
+    prefs.begin("wifi", true);
+    if (!prefs.isKey("ssid") || !prefs.isKey("password")) {
+        DEBUG_PRINTLN("No Wifi");
+        BtMode = mode::device_1;
+    } else {
+        wssid = prefs.getString("ssid", "");
+        wpassword = prefs.getString("password", "");
+        BtMode = mode::OFF;
+        WiFi.begin(wssid, wpassword);
+    }
+    prefs.end();
+
     DEBUG_PRINTLN("CHECKING CONFIG!");
     tft->init(240, 320);
     tft->invertDisplay(0);
@@ -156,7 +167,6 @@ void setup() {
     }
     else {
         loadConfig();
-        DEBUG_PRINTLN(cfg.fburl);
     }
     
     tft->fillScreen(ST77XX_BLACK);
