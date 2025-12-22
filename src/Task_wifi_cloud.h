@@ -16,6 +16,7 @@
 extern Preferences prefs;
 extern SystemConfig cfg;
 extern QueueHandle_t firebaseUpload;
+extern String wssid, wpassword;
 
 // void changeBtName(const char* newName);
 String parseSSID(String msg);

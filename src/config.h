@@ -33,8 +33,8 @@
 #define PZEM0_TX_PIN 17
 #define PZEM0_SERIAL Serial2
 
-#define PZEM1_RX_PIN 13
-#define PZEM1_TX_PIN 14
+#define PZEM1_RX_PIN 14
+#define PZEM1_TX_PIN 13
 #define PZEM1_SERIAL Serial1
 
 //RTC DS1307

@@ -1,4 +1,4 @@
-#include <Task_normal_operation.h>
+#include "Task_peripherals.h"
 
 static long tieredElectricCalculate(int kwh, ElectricityTier tiers[], int size, bool includeVAT) {
     long total = 0;
@@ -23,7 +23,7 @@ static long tieredElectricCalculate(int kwh, ElectricityTier tiers[], int size, 
     return total;
 }
 
-void TaskNormalOpe(void *parameter) {
+void TaskPeripherals(void *parameter) {
     //TFT init
     ST7789_extend tft(TFT_CS, TFT_DC, TFT_RST);
 
@@ -196,28 +196,28 @@ void TaskNormalOpe(void *parameter) {
         //         pzem1.frequency());
         // DEBUG_PRINTLN();
 
-        // if (now.second == 0 && timeOffset != now.minute) {
-        //     fbDataSend.voltage_1 = A1.voltage;
-        //     fbDataSend.voltage_2 = A2.voltage;
-        //     fbDataSend.cost_1 = A1.cost;
-        //     fbDataSend.cost_2 = A2.cost;
-        //     fbDataSend.energy_1 = A1.energy;
-        //     fbDataSend.energy_2 = A2.energy;
-        //     sprintf(fbDataSend.dayStamp, "%02d-%02d-%04d",
-        //         now.day,
-        //         now.month,
-        //         now.year
-        //     );
-        //     sprintf(fbDataSend.timeStamp, "%02d:%02d",
-        //         now.hour,
-        //         now.minute
-        //     );
-        //     DEBUG_PRINTLN(fbDataSend.dayStamp);
-        //     DEBUG_PRINTLN(fbDataSend.timeStamp);
-        //     xQueueSend(firebaseUpload, &fbDataSend, portMAX_DELAY);
-        //     DEBUG_PRINTLN("SENT");
-        //     timeOffset = now.minute;
-        // }
+        if (now.second == 0 && timeOffset != now.minute) {
+            fbDataSend.voltage_1 = A1.voltage;
+            fbDataSend.voltage_2 = A2.voltage;
+            fbDataSend.cost_1 = A1.cost;
+            fbDataSend.cost_2 = A2.cost;
+            fbDataSend.energy_1 = A1.energy;
+            fbDataSend.energy_2 = A2.energy;
+            sprintf(fbDataSend.dayStamp, "%02d-%02d-%04d",
+                now.day,
+                now.month,
+                now.year
+            );
+            sprintf(fbDataSend.timeStamp, "%02d:%02d",
+                now.hour,
+                now.minute
+            );
+            DEBUG_PRINTLN(fbDataSend.dayStamp);
+            DEBUG_PRINTLN(fbDataSend.timeStamp);
+            xQueueSend(firebaseUpload, &fbDataSend, portMAX_DELAY);
+            DEBUG_PRINTLN("SENT");
+            timeOffset = now.minute;
+        }
 
         vTaskDelay(200 / portTICK_PERIOD_MS);
     }

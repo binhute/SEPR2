@@ -1,5 +1,5 @@
-#ifndef TASK_NORMAL_OPERATION_H
-#define TASK_NORMAL_OPERATION_H
+#ifndef TASK_PERIPHERALS_H
+#define TASK_PERIPHERALS_H
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -23,7 +23,7 @@ typedef struct {
     int price;   
 } ElectricityTier;
 static long tieredElectricCalculate(int kwh, ElectricityTier tiers[], int size, bool includeVAT);
-void TaskNormalOpe(void *pvParameters);
+void TaskPeripherals(void *pvParameters);
 
 
 #endif

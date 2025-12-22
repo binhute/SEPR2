@@ -7,7 +7,6 @@
 #include <freertos/task.h>
 #include <freertos/queue.h>
 #include <LittleFS.h>
-#include <BluetoothSerial.h>
 #include <ESPAsyncWebServer.h>
 #include <math.h>
 #include <RTClib.h>
@@ -18,22 +17,21 @@
 #include <WiFiUdp.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include "Task_normal_operation.h"
+#include "Task_peripherals.h"
 #include "Task_wifi_cloud.h"
+#include "Task_bluetooth.h"
 #include "json_storage.h"
 
 AsyncWebServer server(80);
 Preferences prefs;
 
 //Task
-TaskHandle_t normalOpe_handle = NULL;
+TaskHandle_t peripherals_handle = NULL;
 TaskHandle_t wifiCloud_handle = NULL;
+TaskHandle_t bluetooth_handle = NULL;
 
 //Queue
 QueueHandle_t firebaseUpload;
-
-//Bluetooth classic
-BluetoothSerial SerialBT;
 
 bool isConfigSaved() {
     if (!prefs.begin("config", true)) {
@@ -130,27 +128,11 @@ bool loadConfig() {
 }
 
 ST7789_extend *tft = new ST7789_extend(TFT_CS, TFT_DC, TFT_RST);
-
-mode BtMode;
-
 String wssid, wpassword;
 
 void setup() {
     Serial.begin(115200);
-    firebaseUpload = xQueueCreate(10, sizeof(fbData));
-
-    DEBUG_PRINTLN("CHECKING WIFI!");
-    prefs.begin("wifi", true);
-    if (!prefs.isKey("ssid") || !prefs.isKey("password")) {
-        DEBUG_PRINTLN("No Wifi");
-        BtMode = mode::device_1;
-    } else {
-        wssid = prefs.getString("ssid", "");
-        wpassword = prefs.getString("password", "");
-        BtMode = mode::OFF;
-        WiFi.begin(wssid, wpassword);
-    }
-    prefs.end();
+    firebaseUpload = xQueueCreate(30, sizeof(fbData));
 
     DEBUG_PRINTLN("CHECKING CONFIG!");
     tft->init(240, 320);
@@ -172,25 +154,44 @@ void setup() {
     tft->fillScreen(ST77XX_BLACK);
     delete tft;
     tft = nullptr;
+
+    DEBUG_PRINTLN("CHECKING WIFI!");
+    prefs.begin("wifi", true);
+    if (!prefs.isKey("ssid") || !prefs.isKey("password")) {
+        DEBUG_PRINTLN("No Wifi");
+        xTaskCreatePinnedToCore(
+            TaskBluetooth,
+            "Bluetooth",
+            10000,
+            NULL,
+            5,
+            &bluetooth_handle,
+            1
+        );
+    } else {
+        wssid = prefs.getString("ssid", "");
+        wpassword = prefs.getString("password", "");
+
+        xTaskCreatePinnedToCore(
+            TaskWifiCloud,
+            "Wifi Cloud",
+            10000,
+            NULL,
+            4,
+            &wifiCloud_handle,
+            1
+        );
+    }
+    prefs.end();
     DEBUG("Begin tasks");
     xTaskCreatePinnedToCore(
-        TaskNormalOpe,
+        TaskPeripherals,
         "Normal Operation",
         4096,
         NULL,
         6,
-        &normalOpe_handle,
+        &peripherals_handle,
         0
-    );
-
-    xTaskCreatePinnedToCore(
-        TaskWifiCloud,
-        "Wifi Cloud",
-        10000,
-        NULL,
-        4,
-        &wifiCloud_handle,
-        1
     );
 }
 
