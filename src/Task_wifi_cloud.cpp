@@ -7,13 +7,13 @@ FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 FirebaseJson json;
-//Time stamp
+
+//Timestamp
 String ts;
 String ds;
 
 void TaskWifiCloud(void *pvParameters) {
-    DEBUG_PRINTLN("Task Wifi");
-    WiFi.begin(wssid, wpassword);
+    DEBUG_PRINTLN("[WiFi] Task WiFi");
     config.api_key = cfg.fbapi;
     config.database_url = cfg.fburl;
     auth.user.email = cfg.email;
@@ -21,36 +21,67 @@ void TaskWifiCloud(void *pvParameters) {
     config.token_status_callback = tokenStatusCallback;
     fbData fbDataReceive;
     for (;;) {
-        if (WiFi.status() != WL_CONNECTED) {
-            DEBUG_PRINTLN("DISCONNECTED");
-            WiFi.reconnect();
-            vTaskDelay(3000 / portTICK_PERIOD_MS);
-            continue;
-        }
+        xEventGroupWaitBits(
+            sysEvent,
+            EVT_WIFI_MODE,
+            pdFALSE,
+            pdTRUE,
+            portMAX_DELAY
+        ); 
 
-        if (!Firebase.ready()) {
-            Firebase.begin(&config, &auth);
-            Firebase.reconnectWiFi(true);
-        }
-        if (xQueueReceive(firebaseUpload, &fbDataReceive, portMAX_DELAY) == pdPASS) {
-            // DEBUG_PRINTLN();
-            // DEBUG_PRINTLN(fbDataReceive.timeStamp);
-            // DEBUG_PRINTLN(fbDataReceive.cost_1);
-            // DEBUG_PRINTLN(fbDataReceive.cost_2);
-            // DEBUG_PRINTLN(fbDataReceive.energy_1);
-            // DEBUG_PRINTLN(fbDataReceive.energy_2);
-            
-            ds = String(fbDataReceive.dayStamp);
-            ts = String(fbDataReceive.timeStamp);
-            json.set(ds + "/" + ts, fbDataReceive.energy_1);
-            json.set("/Voltage", fbDataReceive.voltage_1);
-            Firebase.RTDB.updateNode(&fbdo, "/" + String(ID1), &json);
+        while (xEventGroupGetBits(sysEvent) & EVT_WIFI_MODE) {
+            if (!wifiStarted) {
+                DEBUG_PRINTLN("[WiFi] WiFi begin");
+                WiFi.begin(wssid, wpassword);
+                wifiStarted = true;
+            }
 
-            json.set(ds + "/" + ts, fbDataReceive.energy_2);
-            json.set("/Voltage", fbDataReceive.voltage_2);
-            Firebase.RTDB.updateNode(&fbdo, "/" + String(ID2), &json);
-        }
+            if (WiFi.status() != WL_CONNECTED) {
+                DEBUG_PRINTLN("[WiFi] DISCONNECTED");
+                WiFi.reconnect();
+                vTaskDelay(3000 / portTICK_PERIOD_MS);
+                continue;
+            }
 
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+            if (!Firebase.ready()) {
+                Firebase.begin(&config, &auth);
+                Firebase.reconnectWiFi(true);
+            }
+            if (xQueueReceive(firebaseUpload, &fbDataReceive, pdMS_TO_TICKS(500)) == pdPASS) {
+                ds = String(fbDataReceive.dayStamp);
+                ts = String(fbDataReceive.timeStamp);
+
+                // >> upload Firebase
+                // > ID1
+                Firebase.RTDB.setFloat(
+                    &fbdo,
+                    "/" + String(ID1) + "/Data/" + ds + "/" + ts,
+                    fbDataReceive.energy_1
+                );
+
+                Firebase.RTDB.setInt(
+                    &fbdo,
+                    "/" + String(ID1) + "/Voltage",
+                    fbDataReceive.voltage_1
+                );
+                
+                // > ID2
+                Firebase.RTDB.setFloat(
+                    &fbdo,
+                    "/" + String(ID2) + "/Data/" + ds + "/" + ts,
+                    fbDataReceive.energy_2
+                );
+
+                Firebase.RTDB.setInt(
+                    &fbdo,
+                    "/" + String(ID2) + "/Voltage",
+                    fbDataReceive.voltage_2
+                );
+            }
+
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
+        DEBUG_PRINTLN("[WiFi] Exit WiFi mode");
+        wifiStarted = false;
     }
 }

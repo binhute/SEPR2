@@ -1,3 +1,6 @@
+#ifndef TASK_WIFI_H
+#define TASK_WIFI_H
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
@@ -17,8 +20,11 @@ extern Preferences prefs;
 extern SystemConfig cfg;
 extern QueueHandle_t firebaseUpload;
 extern String wssid, wpassword;
+extern EventGroupHandle_t sysEvent;
 
-// void changeBtName(const char* newName);
+static bool wifiStarted = false;
 String parseSSID(String msg);
 String parsePassword(String msg);
 void TaskWifiCloud(void *pvParameters);
+
+#endif

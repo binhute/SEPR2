@@ -1,5 +1,6 @@
 #include "Task_peripherals.h"
 
+// >> Tier Calculation (optional)
 static long tieredElectricCalculate(int kwh, ElectricityTier tiers[], int size, bool includeVAT) {
     long total = 0;
     int remaining = kwh;
@@ -24,10 +25,10 @@ static long tieredElectricCalculate(int kwh, ElectricityTier tiers[], int size, 
 }
 
 void TaskPeripherals(void *parameter) {
-    //TFT init
+    // >> TFT init
     ST7789_extend tft(TFT_CS, TFT_DC, TFT_RST);
 
-    //Pzem init
+    // >> Pzem init
     PZEM004Tv30 pzem0(PZEM0_SERIAL, PZEM0_RX_PIN, PZEM0_TX_PIN);
     PZEM004Tv30 pzem1(PZEM1_SERIAL, PZEM1_RX_PIN, PZEM1_TX_PIN);
 
@@ -42,20 +43,20 @@ void TaskPeripherals(void *parameter) {
             : Room(room), voltage(voltageVal), energy(energyVal), cost(billVal) {}
     };
 
-    //User data init
+    // >> User data init
     users_data A1(cfg.room1, 0, 0, 0);
     users_data A2(cfg.room2, 0, 0, 0);
 
-    //RTC init
+    // >> RTC init
     RTC_DS1307 rtc;
     const char* daysOfWeek[] = {
-    "Sun",    // 0
-    "Mon",    // 1
-    "Tue",   // 2
-    "Wed", // 3
-    "Thu",  // 4
-    "Fri",    // 5
-    "Sat"   // 6
+    "CN",    // 0
+    "T2",    // 1
+    "T3",    // 2
+    "T4",    // 3
+    "T5",    // 4
+    "T6",    // 5
+    "T7"     // 6
     };
 
     struct RTC_Data {
@@ -81,9 +82,10 @@ void TaskPeripherals(void *parameter) {
 
     char timeChar[40];
     char old_time[40];
-    uint8_t timeOffset = 25;
+    uint8_t timeOffset = 100;
     fbData fbDataSend;
 
+    //Tier
     ElectricityTier tiers[] = {
         {50,   1984},   // tier 1
         {50,   2050},   // tier 2
@@ -93,6 +95,7 @@ void TaskPeripherals(void *parameter) {
         {-1,   3460},   // tier 6
     };
 
+    // >> Pre-configuration
     Wire.begin(SDA_PIN, SCL_PIN);
     rtc.begin();
     tft.init(240, 320); 
@@ -103,17 +106,18 @@ void TaskPeripherals(void *parameter) {
     tft.addTable(240 - 50, 3, 2, ST77XX_BLUE);
     tft.print(A1.Room, 60, 70, 2, ST77XX_WHITE);
     tft.print(A2.Room, 220, 70, 2, ST77XX_WHITE);
-    //Write data to Flash
+
+    // >> Write data to Flash
     if (!isnan(pzem0.voltage()) || !isnan(pzem1.voltage())) {
         prefs.begin("storage", false);
         if (!isnan(pzem0.voltage())) {
             prefs.putDouble("energy_KH1", pzem0.energy());
-            DEBUG_PRINTLN("Writed KH1");
+            DEBUG_PRINTLN("[P] Writed energy ID1");
         }
 
         if (!isnan(pzem1.voltage())) {
             prefs.putDouble("energy_KH2", pzem1.energy());
-            DEBUG_PRINTLN("Writed KH2");
+            DEBUG_PRINTLN("[P] Writed energy ID2");
         }
         prefs.end();
     }
@@ -180,42 +184,27 @@ void TaskPeripherals(void *parameter) {
         tft.deleteText(170, 200, 2, 12);
         tft.print(A2.cost, 170, 200, 2, ST77XX_WHITE);
         tft.print(" VND");
-        // DEBUG_PRINTLN();
-        // DEBUG_PRINTF("%.1f V, %.2f A, %.1f W, %.3f kWh, %.1f Hz",
-        //         pzem0.voltage(),
-        //         pzem0.current(),
-        //         pzem0.power(),
-        //         pzem0.energy(),
-        //         pzem0.frequency());
-        // DEBUG_PRINTLN();
-        // DEBUG_PRINTF("%.1f V, %.2f A, %.1f W, %.3f kWh, %.1f Hz",
-        //         pzem1.voltage(),
-        //         pzem1.current(),
-        //         pzem1.power(),
-        //         pzem1.energy(),
-        //         pzem1.frequency());
-        // DEBUG_PRINTLN();
-
+        
+        // >> Send every minute with hour timestamp
         if (now.second == 0 && timeOffset != now.minute) {
             fbDataSend.voltage_1 = A1.voltage;
             fbDataSend.voltage_2 = A2.voltage;
             fbDataSend.cost_1 = A1.cost;
             fbDataSend.cost_2 = A2.cost;
-            fbDataSend.energy_1 = A1.energy;
-            fbDataSend.energy_2 = A2.energy;
-            sprintf(fbDataSend.dayStamp, "%02d-%02d-%04d",
-                now.day,
+            fbDataSend.energy_1 = roundf(A1.energy * 100.0) / 100.0;
+            fbDataSend.energy_2 = roundf(A2.energy * 100.0) / 100.0;
+            sprintf(fbDataSend.dayStamp, "%04d-%02d-%02d",
+                now.year,
                 now.month,
-                now.year
+                now.day
             );
-            sprintf(fbDataSend.timeStamp, "%02d:%02d",
-                now.hour,
-                now.minute
+            sprintf(fbDataSend.timeStamp, "%02d:00",
+                now.hour
             );
-            DEBUG_PRINTLN(fbDataSend.dayStamp);
-            DEBUG_PRINTLN(fbDataSend.timeStamp);
+            DEBUG_PRINTF("[Queue] Daystamp: %s\n", fbDataSend.dayStamp);
+            DEBUG_PRINTF("[Queue] TimeStamp: %s\n", fbDataSend.timeStamp);
             xQueueSend(firebaseUpload, &fbDataSend, portMAX_DELAY);
-            DEBUG_PRINTLN("SENT");
+            DEBUG_PRINTLN("[Queue] SENT QUEUE");
             timeOffset = now.minute;
         }
 

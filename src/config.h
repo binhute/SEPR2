@@ -14,6 +14,7 @@
     #define DEBUG_PRINTF(...)
 #endif
 
+// SPI PIN
 #define TFT_MISO 19
 #define TFT_MOSI 23
 #define TFT_SCLK 18
@@ -21,14 +22,7 @@
 #define TFT_DC    2  
 #define TFT_RST   4       
 
-#define VOLT "Voltage: "
-#define CURR "Current: "
-#define POWR "Power: "
-#define ENGY "Energy: "
-#define FRQ  "Frequency: "
-#define PF   "PF: "
-
-//pzem
+//PZEM PIN
 #define PZEM0_RX_PIN 16
 #define PZEM0_TX_PIN 17
 #define PZEM0_SERIAL Serial2
@@ -46,6 +40,10 @@
 #define GMT_OFFSET_SEC 7 * 3600
 #define DAYLIGHTOFFSET_SEC 0
 
+//BUTTON
+#define BUTTON 22
+#define HOLD_TIME_MS 5000
+
 //customer id
 #define ID1 "C000001"
 #define ID2 "C000002"
@@ -61,6 +59,7 @@ struct SystemConfig {
     String unitPrice;
 };
 
+//QUEUE DATAFRAME
 typedef struct {
     char dayStamp[20];
     char timeStamp[25];
@@ -72,10 +71,8 @@ typedef struct {
     long cost_2;
 } fbData;
 
-enum class mode {
-    device_1,
-    device_2,
-    OFF
-};
+//Core 0 flag
+#define EVT_WIFI_MODE (1 << 0)
+#define EVT_BT_MODE   (1 << 1)
 
 #endif
