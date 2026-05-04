@@ -1,6 +1,6 @@
-# ⚡ Smart Energy Monitoring System (Dual Channel)
+# Smart Energy Monitoring System (Dual Channel)
 
-## 📘 Overview
+## Overview
 The **Smart Energy Monitoring System** is an RTOS-based IoT project using **ESP32** to measure and monitor two independent electrical loads in real time.  
 Each load is monitored by a dedicated **PZEM-004T** energy meter.  
 
@@ -12,7 +12,7 @@ Device configuration (Wi-Fi, Firebase credentials) is handled via a **web page s
 
 ---
 
-## 🚀 Features
+## Features
 - Dual-channel measurement using **2x PZEM-004T** sensors.  
 - Real-time data display on **TFT ST7789 (SPI)**.  
 - Automatic upload to **Firebase Realtime Database**.  
@@ -23,7 +23,7 @@ Device configuration (Wi-Fi, Firebase credentials) is handled via a **web page s
 
 ---
 
-## 🧩 Hardware Components
+## Hardware Components
 
 | Component | Description |
 |------------|-------------|
@@ -36,7 +36,7 @@ Device configuration (Wi-Fi, Firebase credentials) is handled via a **web page s
 
 ---
 
-## ⚙️ Typical Wiring (ESP32)
+## Typical Wiring (ESP32)
 
 | Device | ESP32 Pins | Notes |
 |--------|-------------|--------|
@@ -59,7 +59,7 @@ Device configuration (Wi-Fi, Firebase credentials) is handled via a **web page s
 
 ---
 
-## 💻 Software Requirements
+## Software Requirements
 - **VS Code** with **PlatformIO** extension (recommended)
 - Required Libraries:
 
@@ -76,7 +76,7 @@ Device configuration (Wi-Fi, Firebase credentials) is handled via a **web page s
 
 ---
 
-## 🔐 Configuration via Web Page (LittleFS)
+## Configuration via Web Page (LittleFS)
 
 This project uses a web-based configuration page stored in LittleFS instead of compile-time constants.  
 Users can enter their Wi-Fi, Firebase information, and other parameters directly from a browser.  
@@ -99,7 +99,7 @@ All settings are saved to flash and automatically loaded at startup.
 4. Connect to the AP (SSID: `config`, password: `12345678` or change its in your code) → open a browser → fill in Wi-Fi & Firebase configuration values.  
    The ESP32 saves them to flash and reconnects automatically.
 
-> ⚠️ WARNING:  
+> WARNING:  
 > Credentials are stored inside the device.  
 > Do **not** upload filesystem images or flash dumps to public repositories.
 

@@ -32,9 +32,7 @@ private:
             this->thickness = thickness;
             this->gridThickness = gridThickness;
         }
-    };
-
-    tableData tbDat;
+    } tbDat;
 
 public:
     ST7789_extend(int8_t cs, int8_t dc, int8_t mosi, int8_t sclk, int8_t rst)
