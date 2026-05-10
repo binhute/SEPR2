@@ -18,12 +18,6 @@ extern Preferences prefs;
 extern SystemConfig cfg;
 extern QueueHandle_t firebaseUpload;
 
-typedef struct {
-    int limit;
-    int price;   
-} ElectricityTier;
-static long tieredElectricCalculate(int kwh, ElectricityTier tiers[], int size, bool includeVAT);
 void TaskPeripherals(void *pvParameters);
-
 
 #endif

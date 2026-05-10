@@ -22,9 +22,6 @@ extern QueueHandle_t firebaseUpload;
 extern String wssid, wpassword;
 extern EventGroupHandle_t sysEvent;
 
-static bool wifiStarted = false;
-String parseSSID(String msg);
-String parsePassword(String msg);
 void TaskWifiCloud(void *pvParameters);
 
 #endif

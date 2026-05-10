@@ -12,6 +12,7 @@ FirebaseJson json;
 String ts;
 String ds;
 
+static bool wifiStarted = false;
 void TaskWifiCloud(void *pvParameters) {
     DEBUG_PRINTLN("[WiFi] Task WiFi");
     config.api_key = cfg.fbapi;

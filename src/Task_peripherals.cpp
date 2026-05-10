@@ -1,6 +1,11 @@
 #include "Task_peripherals.h"
 
 // >> Tier Calculation (optional)
+typedef struct {
+    int limit;
+    int price;   
+} ElectricityTier;
+
 static long tieredElectricCalculate(int kwh, ElectricityTier tiers[], int size, bool includeVAT) {
     long total = 0;
     int remaining = kwh;
@@ -86,7 +91,7 @@ void TaskPeripherals(void *parameter) {
     fbData fbDataSend;
 
     //Tier
-    ElectricityTier tiers[] = {
+    static ElectricityTier tiers[] = {
         {50,   1984},   // tier 1
         {50,   2050},   // tier 2
         {100,  2380},   // tier 3

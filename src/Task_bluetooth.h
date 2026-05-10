@@ -15,9 +15,6 @@ extern TaskHandle_t wifiCloud_handle;
 extern EventGroupHandle_t sysEvent;
 extern volatile bool wifiConfigured;
 
-String parseSSID(String msg);
-String parsePassword(String msg);
-static bool btInited = false;
 void TaskBluetooth(void *pvParameters);
 
 #endif

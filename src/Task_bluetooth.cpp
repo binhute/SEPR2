@@ -1,6 +1,6 @@
 #include <Task_bluetooth.h>
 
-String parseSSID(String msg) {
+static String parseSSID(String msg) {
     String data = msg.substring(5);
     int sep = data.indexOf('|');
     if (sep < 0) return "";
@@ -8,7 +8,7 @@ String parseSSID(String msg) {
     return data.substring(0, sep);
 }
 
-String parsePassword(String msg) {
+static String parsePassword(String msg) {
     String data = msg.substring(5);   
     int sep = data.indexOf('|');
     if (sep < 0) return "";
@@ -16,6 +16,7 @@ String parsePassword(String msg) {
     return data.substring(sep + 1);
 }
 
+static bool btInited = false;
 void TaskBluetooth(void *pvParameters) {
     DEBUG_PRINTLN("[BT] Task Bluetooth");
     BluetoothSerial SerialBT;
