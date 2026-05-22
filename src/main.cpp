@@ -45,12 +45,12 @@ void IRAM_ATTR buttonISR() {
         btnpressed = true;
         btnPressTick = xTaskGetTickCountFromISR();
         xTimerStartFromISR(btnTimer, &xHigherPriorityTaskWoken);
-        ets_printf("[ISR] Button PRESSED\n");
+        DEBUG_PRINT("[ISR] Button PRESSED\n");
     } 
     else {
         btnpressed = false;
         xTimerStopFromISR(btnTimer, &xHigherPriorityTaskWoken);
-        ets_printf("[ISR] Button RELEASED\n");
+        DEBUG_PRINT("[ISR] Button RELEASED\n");
     }
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
